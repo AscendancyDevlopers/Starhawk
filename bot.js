@@ -6,6 +6,7 @@
 // Discord: 
 /////////////////////////////////////////////////////////////////
 
+
 // Add required libraries
 require('dotenv').config();
 const { Client, GatewayIntentBits, REST, Routes } = require('discord.js');
@@ -35,6 +36,8 @@ const {MEMBER_OF_PARLIMENT, ALLOWED_ROLES, ON_PARLIAMENT_GROUNDS} = require('./r
 const {readCSV, saveToCSV} = require('./Functions/CSV');
 const {USERS_CSV_PATH, getUserLocation, setUserLocation} = require('./Functions/UserLocation');
 const {executeTimer, scheduleTimer, saveTimers, loadTimers} = require('./Functions/timers');
+const {testGoogleSheetsConnection, downloadSheets, editCsv, uploadCsv} = require('./googleSheetsHandler');
+const {updatePopulationData, updateEconomicSectors} = require('./EndOfMonth');
 
 (async () => {
     try {
@@ -255,6 +258,17 @@ client.on('interactionCreate', async interaction => {
             console.error('Command Stats Failed:', error);
         }
     }
+
+    // endOfMonth command
+    if (commandName === 'endofmonth') {
+        try {
+            downloadSheets();
+
+
+        } catch (error) {
+            console.error('Command End of Month Failed:', error);
+        }
+    }
 });
 
 
@@ -266,4 +280,11 @@ try {
 }
 
 // Load timers on startup
-loadTimers();
+async function main() {
+    await loadTimers();
+    await downloadSheets();  // Waits for sheets to download before proceeding
+    await updateEconomicSectors();  // Runs after download is complete
+    await updatePopulationData()
+}
+
+main();

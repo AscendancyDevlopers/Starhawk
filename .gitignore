@@ -134,3 +134,4 @@ credentials.json
 # user data
 .csv
 .json
+service-account.json
