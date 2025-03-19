@@ -19,6 +19,15 @@ const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 const VERSION_ID = '1.0.0';
 
+// Google Sheets Setup
+const { google } = require("googleapis");
+const credentials = JSON.parse(fs.readFileSync("service-account.json", "utf8"));
+const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
+const auth = new google.auth.GoogleAuth({ credentials, scopes: SCOPES });
+const sheets = google.sheets({ version: "v4", auth });
+
+const SPREADSHEET_IDS = process.env.SHEET_IDS.split(",");
+
 // Constants
 const LOG_CHANNEL_ID = '1105379725100187732';
 const ROLE_ID = '1289810234826821674';
@@ -31,12 +40,13 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
 // File Imports
 const {commands} = require('./commands');
 const {SecureLocations, PossibleLocations} = require('./Locations');
-const {MEMBER_OF_PARLIMENT, ALLOWED_ROLES, ON_PARLIAMENT_GROUNDS} = require('./roles');
+const {SERVER_DIRECTOR, MEMBER_OF_PARLIMENT, ALLOWED_ROLES, ON_PARLIAMENT_GROUNDS} = require('./roles');
 const {readCSV, saveToCSV} = require('./Functions/CSV');
 const {USERS_CSV_PATH, getUserLocation, setUserLocation} = require('./Functions/UserLocation');
 const {executeTimer, scheduleTimer, saveTimers, loadTimers} = require('./Functions/timers');
 const {testGoogleSheetsConnection, downloadSheets, editCsv, uploadCsv} = require('./googleSheetsHandler');
 const {RunEndofMonth} = require('./EndOfMonth');
+const { watchApplicationSheet } = require('./WatchApplicationsFile');
 
 (async () => {
     try {
@@ -53,22 +63,6 @@ client.once('ready', () => {
     console.log(`Starhawk is online! Logged in as ${client.user.tag}`);
     fetchUsersWithRole();
 });
-
-// Check if user has any of the allowed roles to use the command
-async function hasPermission(member) {
-    const DoesUserHavePermission = ALLOWED_ROLES.some(role => member.roles.cache.has(role));
-    
-    if (DoesUserHavePermission)
-    {
-        console.log('Passed Permissions Check:', member.user.username);
-    }
-    else
-    {
-        logCommandUsage("Permission Check Failed by:", member, 'Attempted to use restricted Command');
-    };
-    
-    return DoesUserHavePermission;
-}
 
 // Function to update the voice channel name with the number of "Contractor" members
 async function updateVoiceChannel() {
@@ -90,7 +84,7 @@ async function updateVoiceChannel() {
 }
 
 // Update every 5 minutes
-setInterval(updateVoiceChannel, 5 * 60 * 1000); // 5 minutes in milliseconds
+setInterval(updateVoiceChannel, 5 * 60 * 1000); // 5 minutes
 
 // Log command usage and conditions
 async function logCommandUsage(commandName, user, conditions) {
@@ -149,127 +143,247 @@ async function fetchUsersWithRole() {
 
 client.on('interactionCreate', async interaction => {
     if (!interaction.isCommand()) return;
-
+  
     const { commandName, options, user } = interaction;
-
     // Get the member object for the user who invoked the command
     const member = await interaction.guild.members.fetch(interaction.member);
-    
-
-    // Check if the user has the required roles for the command
-    if (!await hasPermission(member)) {
-        return interaction.reply({
-            content: 'You do not have the required role to use this command.',
-            ephemeral: true,
-        });
+  
+    // refresh_channel command
+    if (commandName === 'refresh_channel') {
+      if (!member.roles.cache.some(role => role.id === SERVER_DIRECTOR)) {
+        return interaction.reply("You don't have permission to use this command.");
+      }
+      try {
+        await updateVoiceChannel();
+        await interaction.reply('Voice channel name refreshed.');
+        logCommandUsage(commandName, member, 'Manual refresh of voice channel name');
+      } catch (error) {
+        console.error('Command refresh_channel Failed:', error);
+      }
     }
-
-    // Handle the refresh command
-    if (commandName === 'refresh') {
-        try {
-            await updateVoiceChannel();
-            await interaction.reply('Voice channel name refreshed.');
-            logCommandUsage(commandName, member, 'Manual refresh of voice channel name');
-        } catch (error) {
-            console.error('Command Refresh Failed:', error);
-        }
+  
+    // check_mp_location command
+    if (commandName === 'check_mp_location') {
+      // Use the provided user (option named "mp") or default to the invoking user
+      const targetUser = options.getUser("mp") || user;
+      try {
+        const location = await getUserLocation(targetUser.id);
+        const displayLocation = location || "Unknown";
+        await interaction.reply(`${targetUser.username}'s current location is: **${displayLocation}**`);
+        logCommandUsage(commandName, member, `Checked location for ${targetUser.username}`);
+      } catch (error) {
+        console.error("Error checking location:", error);
+        await interaction.reply("There was an error retrieving the location.");
+      }
     }
-
-    if (commandName === "checklocation") {
-        // Use the provided user, or default to the invoking user
-        const targetUser = options.getUser("user") || user;
-        try {
-            const location = await getUserLocation(targetUser.id);
-            console.log(location);
-            console.log(targetUser.id);
-            const displayLocation = location || "Unknown";
-            await interaction.reply(`${targetUser.username}'s current location is: **${displayLocation}**`);
-            logCommandUsage(commandName, interaction.member, `Checked location for ${targetUser.username}`);
-        } catch (error) {
-            console.error("Error checking location:", error);
-            await interaction.reply("There was an error retrieving the location.");
-        }
-    }    
-
-    if (commandName === "movelocation") {
-        const targetUser = options.getUser('user') || user;
-        const targetMember = await interaction.guild.members.fetch(user.id);
-        const newLocation = options.getString("newlocation");
-
-        if (!PossibleLocations.includes(newLocation)) {
-            await interaction.reply(`Invalid location. Choose from: ${PossibleLocations.join(", ")}`);
-            return;
-        }
-
-        try {
-            await interaction.reply(`Moving **${targetUser.username}** to **${newLocation}** in ${MOVE_TIME / 1000} seconds...`);
-            logCommandUsage(commandName, member, `Scheduled move to ${newLocation}`);
-
-            setTimeout(async () => {
-                try {
-                    await setUserLocation(targetUser.id, targetUser.username, newLocation);
-                    console.log(`${targetUser.username} has moved to: ${newLocation}`);
-                    logCommandUsage(commandName, member, `Moved to ${newLocation}`);
-
-                    if (newLocation != PossibleLocations[0])
-                    {
-                        await targetMember.roles.remove(ON_PARLIAMENT_GROUNDS);
-                    }
-                    else
-                    {
-                        await targetMember.roles.add(ON_PARLIAMENT_GROUNDS);
-                    }
-
-                    // Notify the user after moving
-                    await interaction.followUp(`${targetUser.username} has arrived at **${newLocation}**.`);
-                } catch (error) {
-                    console.error("Error updating location after delay:", error);
-                }
-            }, MOVE_TIME);
-        } catch (error) {
-            console.error("Error initiating move location:", error);
-            await interaction.reply("There was an error scheduling your location update.");
-        }
+  
+    // travel_to_location command (formerly movelocation)
+    if (commandName === 'travel_to_location') {
+      // Since the command doesn't include a target user option, default to the invoking user
+      const targetUser = user;
+      const targetMember = await interaction.guild.members.fetch(user.id);
+      const newLocation = options.getString("travel_location");
+  
+      if (!member.roles.cache.some(role => role.id === SERVER_DIRECTOR)) {
+        return interaction.reply("You don't have permission to use this command.");
+      }
+  
+      if (!PossibleLocations.includes(newLocation)) {
+        await interaction.reply(`Invalid location. Choose from: ${PossibleLocations.join(", ")}`);
+        return;
+      }
+  
+      // Immediately remove the ON_PARLIAMENT_GROUNDS role if moving away from it.
+      if (newLocation !== PossibleLocations[0]) {
+        await targetMember.roles.remove(ON_PARLIAMENT_GROUNDS);
+      }
+  
+      try {
+        await interaction.reply(`Moving **${targetUser.username}** to **${newLocation}** in ${MOVE_TIME / 1000} seconds...`);
+        logCommandUsage(commandName, member, `Scheduled move to ${newLocation}`);
+  
+        setTimeout(async () => {
+          try {
+            await setUserLocation(targetUser.id, targetUser.username, newLocation);
+            console.log(`${targetUser.username} has moved to: ${newLocation}`);
+            logCommandUsage(commandName, member, `Moved to ${newLocation}`);
+  
+            // Only add the role if the user arrives at ON_PARLIAMENT_GROUNDS
+            if (newLocation === PossibleLocations[0]) {
+              await targetMember.roles.add(ON_PARLIAMENT_GROUNDS);
+            }
+            await interaction.followUp(`${targetUser.username} has arrived at **${newLocation}**.`);
+          } catch (error) {
+            console.error("Error updating location after delay:", error);
+          }
+        }, MOVE_TIME);
+      } catch (error) {
+        console.error("Error initiating travel_to_location:", error);
+        await interaction.reply("There was an error scheduling your location update.");
+      }
     }
-
-    // Handle each command
-    if (commandName === 'test') {
-        try {
-            await interaction.reply('testing 123');
-            logCommandUsage(commandName, member, 'No specific conditions');
-        } catch (error) {
-            console.error('Command Test Failed:', error);
-        }
+  
+    // test_bot command
+    if (commandName === 'test_bot') {
+      if (!member.roles.cache.some(role => role.id === SERVER_DIRECTOR)) {
+        return interaction.reply("You don't have permission to use this command.");
+      }
+      try {
+        await interaction.reply('testing 123');
+        logCommandUsage(commandName, member, 'No specific conditions');
+      } catch (error) {
+        console.error('Command test_bot Failed:', error);
+      }
     }
-
-    // Stats command
-    if (commandName === 'stats') {
-        try {
-            const uptime = process.uptime(); // Get the bot uptime in seconds
-            const days = Math.floor(uptime / (24 * 60 * 60));
-            const hours = Math.floor((uptime % (24 * 60 * 60)) / (60 * 60));
-            const minutes = Math.floor((uptime % (60 * 60)) / 60);
-            const seconds = Math.floor(uptime % 60);
-    
-            await interaction.reply(`Version ${VERSION_ID}, Bot Uptime: ${days}d ${hours}h ${minutes}m ${seconds}s`);
-            logCommandUsage(commandName, member, `Bot uptime requested`);
-        } catch (error) {
-            console.error('Command Stats Failed:', error);
-        }
+  
+    // bot_stats command
+    if (commandName === 'bot_stats') {
+      try {
+        const uptime = process.uptime(); // Bot uptime in seconds
+        const days = Math.floor(uptime / (24 * 60 * 60));
+        const hours = Math.floor((uptime % (24 * 60 * 60)) / (60 * 60));
+        const minutes = Math.floor((uptime % (60 * 60)) / 60);
+        const seconds = Math.floor(uptime % 60);
+  
+        await interaction.reply(`Version ${VERSION_ID}, Bot Uptime: ${days}d ${hours}h ${minutes}m ${seconds}s`);
+        logCommandUsage(commandName, member, 'Bot uptime requested');
+      } catch (error) {
+        console.error('Command bot_stats Failed:', error);
+      }
     }
-
-    // endOfMonth command
-    if (commandName === 'endofmonth') {
-        try {
-            await interaction.reply(`Running End of Month`);
-            await downloadSheets();
-            await RunEndofMonth();
-            logCommandUsage(commandName, member, `Running End of Month`);
-        } catch (error) {
-            console.error('Command End of Month Failed:', error);
-        }
+  
+    // run_end_of_month command
+    if (commandName === 'run_end_of_month') {
+      if (!member.roles.cache.some(role => role.id === SERVER_DIRECTOR)) {
+        return interaction.reply("You don't have permission to use this command.");
+      }
+      try {
+        await interaction.reply(`Running End of Month`);
+        await downloadSheets(SPREADSHEET_IDS);
+        await downloadSheets(options.getString("budget_link"));
+        await RunEndofMonth();
+        logCommandUsage(commandName, member, 'Running End of Month');
+      } catch (error) {
+        console.error('Command run_end_of_month Failed:', error);
+      }
     }
-});
+  
+    // add_bill_for_oversight_committee command
+    if (commandName === 'add_bill_for_oversight_committee') {
+        if (!member.roles.cache.some(role => role.id === SERVER_DIRECTOR)) {
+          return interaction.reply("You don't have permission to use this command.");
+        }
+        const billLink = options.getString('bill_link');
+        const bill_name = options.getString('bill_name');
+        
+        try {
+        const dateObj = new Date();
+        const currentDate = ("0" + dateObj.getDate()).slice(-2) + "-" +
+                            ("0" + (dateObj.getMonth() + 1)).slice(-2) + "-" +
+                            dateObj.getFullYear();            
+      
+          // The append method automatically adds data to the next available row in the specified range.
+          const request = {
+            spreadsheetId: '1xMv0ndSax-IukyL0N5qKbVkUCF2ArhCaehvP2Jh7ewY',
+            range: 'Bills!A:C',
+            valueInputOption: 'USER_ENTERED',
+            insertDataOption: 'INSERT_ROWS',
+            requestBody: {
+              values: [
+                [bill_name, billLink, currentDate]
+              ]
+            }
+          };
+      
+          await sheets.spreadsheets.values.append(request);
+          await interaction.reply(`Bill added for Oversight Committee: ${billLink}`);
+          logCommandUsage(commandName, member, `Added bill for Oversight Committee: ${billLink}`);
+        } catch (error) {
+          console.error('Command add_bill_for_oversight_committee Failed:', error);
+          await interaction.reply("There was an error adding the bill.");
+          // 1289816803341504625 - Oversight chat
+        }
+      }
+      
+
+    if (commandName === 'add_event_to_end_of_month') {
+        if (!member.roles.cache.some(role => role.id === SERVER_DIRECTOR)) {
+          return interaction.reply("You don't have permission to use this command.");
+        }
+        const event_name = options.getString('event_name');
+        
+        try {
+        const dateObj = new Date();
+        const currentDate = ("0" + dateObj.getDate()).slice(-2) + "-" +
+                            ("0" + (dateObj.getMonth() + 1)).slice(-2) + "-" +
+                            dateObj.getFullYear();            
+      
+          // The append method automatically adds data to the next available row in the specified range.
+          const request = {
+            spreadsheetId: '1xMv0ndSax-IukyL0N5qKbVkUCF2ArhCaehvP2Jh7ewY',
+            range: 'Events!A:B',
+            valueInputOption: 'USER_ENTERED',
+            insertDataOption: 'INSERT_ROWS',
+            requestBody: {
+              values: [
+                [event_name, currentDate]
+              ]
+            }
+          };
+
+          await sheets.spreadsheets.values.append(request);
+          
+          await interaction.reply(`Event added for End of Month: ${event_name}`);
+          logCommandUsage(commandName, member, `Event added for End of Month: ${event_name}`);
+        } catch (error) {
+          console.error('Command add_event_to_end_of_month Failed:', error);
+        }
+      }
+  
+    // new_bill command
+    if (commandName === 'new_bill') {
+    const billLink = options.getString('bill_link');
+    const bill_name = options.getString('bill_name');
+      try {
+        const dateObj = new Date();
+        const currentDate = ("0" + dateObj.getDate()).slice(-2) + "-" +
+                            ("0" + (dateObj.getMonth() + 1)).slice(-2) + "-" +
+                            dateObj.getFullYear();            
+      
+          // The append method automatically adds data to the next available row in the specified range.
+          const request = {
+            spreadsheetId: '1eqvvVo5-uS1SU8dGaRy3tvGEB7zHjZp53whQUU5CVRI',
+            range: 'Queue!A:D',
+            valueInputOption: 'USER_ENTERED',
+            insertDataOption: 'INSERT_ROWS',
+            requestBody: {
+              values: [
+                [bill_name, billLink, member.displayName, currentDate]
+              ]
+            }
+          };
+
+          await sheets.spreadsheets.values.append(request);
+
+        // Add logic to add the bill to the regular queue here.
+        await interaction.reply(`New bill added: ${billLink}`);
+        logCommandUsage(commandName, member, `New bill added: ${billLink}`);
+      } catch (error) {
+        console.error('Command new_bill Failed:', error);
+      }
+    }
+  
+    // use_specialisation command
+    if (commandName === 'use_specialisation') {
+      try {
+        // Add logic for using specialisation at the current location here.
+        await interaction.reply("Specialisation used at your current location.");
+        logCommandUsage(commandName, member, 'Used specialisation');
+      } catch (error) {
+        console.error('Command use_specialisation Failed:', error);
+      }
+    }
+  }); 
 
 
 // Log in to Discord
@@ -282,8 +396,10 @@ try {
 // Startup functions
 async function startup() {
     await loadTimers();
-    await downloadSheets();
+    await downloadSheets(SPREADSHEET_IDS);
+    await downloadSheets("https://docs.google.com/spreadsheets/d/18XqkHD2uvQQz1tPSaPC6j5hCic5rr3aYTlr3w0tZL_E/edit?usp=drive_web&ouid=101879698021059588040");
     await RunEndofMonth();
+    await watchApplicationSheet(client);
 }
 
 startup();

@@ -9,14 +9,32 @@ const credentials = JSON.parse(fs.readFileSync("service-account.json", "utf8"));
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
 const auth = new google.auth.GoogleAuth({ credentials, scopes: SCOPES });
 const sheets = google.sheets({ version: "v4", auth });
-
-const SPREADSHEET_IDS = process.env.SHEET_IDS.split(",");
 const CSV_DIR = "./csv_files";
 
 if (!fs.existsSync(CSV_DIR)) fs.mkdirSync(CSV_DIR);
 
-async function downloadSheets() {
-    for (const sheetId of SPREADSHEET_IDS) {
+/**
+ * Extracts a spreadsheet ID from a Google Sheets link.
+ * @param {string} link - The Google Sheets URL or spreadsheet ID.
+ * @returns {string|null} - The extracted spreadsheet ID.
+ */
+function extractSpreadsheetId(link) {
+    const match = link.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    return match ? match[1] : link; // If it's already an ID, return as is
+}
+
+/**
+ * Downloads sheets from given spreadsheet IDs or links.
+ * @param {string[] | string} sheetInputs - An array of spreadsheet IDs or links (or a single input).
+ */
+async function downloadSheets(sheetInputs) {
+    if (!Array.isArray(sheetInputs)) {
+        sheetInputs = [sheetInputs]; // Convert single input to an array
+    }
+
+    for (let input of sheetInputs) {
+        const sheetId = extractSpreadsheetId(input); // Extract ID from link if needed
+
         try {
             const sheetInfo = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
             const sheetTitle = sheetInfo.data.properties.title.replace(/\s+/g, "_");
@@ -32,10 +50,10 @@ async function downloadSheets() {
                 const ws = fs.createWriteStream(csvFilePath);
                 fastCsv.write(data, { headers: true }).pipe(ws);
 
-                console.log(`Saved ${csvFilePath}`);
+                console.log(`✅ Saved: ${csvFilePath}`);
             }
         } catch (error) {
-            console.error(`Error downloading sheet (${sheetId}):`, error);
+            console.error(`❌ Error downloading sheet (${sheetId}):`, error);
         }
     }
 }
@@ -162,6 +180,6 @@ async function readCell(filePath, rowNameOrCell, colName = null) {
 
     console.error(`Row "${rowNameOrCell}" not found.`);
     return;
-}
-
-module.exports = { readCell, testGoogleSheetsConnection, downloadSheets, editCsv, uploadCsv };
+} 
+  
+module.exports = {readCsv, readCell, testGoogleSheetsConnection, downloadSheets, editCsv, uploadCsv };
