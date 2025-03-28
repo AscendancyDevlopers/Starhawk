@@ -1,35 +1,35 @@
 const { ApplicationCommandOptionType } = require('discord.js');
 const { SecureLocations, PossibleLocations } = require('./Locations');
+const { BillsInQueue } = require('./bot');
+const { CABINETROLES } = require('./roles');
+ 
+
+if (!BillsInQueue || !Array.isArray(BillsInQueue)) {
+  console.error('BillsInQueue is not defined or not an array');
+  let BillsInQueue = [bill = ""];
+}
 
 const commands = [
   {
-    name: 'refresh_channel',
-    description: 'Manually refresh the count in the voice channel'
-  },
-  {
-    name: 'test_bot',
-    description: 'Responds with "testing 123"'
-  },
-  {
-    name: 'add_bill_for_oversight_committee',
+    name: 'add-bill-for-oversight-committee',
     description: 'Add a bill to the Oversight Committees Queue',
     options: [
-      {
-        name: 'bill_link',
-        type: ApplicationCommandOptionType.String,
-        description: 'Link to the Bill document',
-        required: true
-      },
       {
         name: 'bill_name',
         type: ApplicationCommandOptionType.String,
         description: 'Name of the Bill',
         required: true
+      },
+      {
+        name: 'bill_link',
+        type: ApplicationCommandOptionType.String,
+        description: 'Link to the Bill document',
+        required: true
       }
     ]
   },
   {
-    name: 'add_event_to_end_of_month',
+    name: 'add-event-to-end-of-month',
     description: 'Add a Event to the End of Month Queue',
     options: [
       {
@@ -41,33 +41,41 @@ const commands = [
     ]
   },
   {
-    name: 'bot_stats',
+    name: 'bot-stats',
     description: 'Show the bot’s stats'
   },
   {
-    name: 'new_bill',
+    name: 'new-bill',
     description: 'Add a bill to the queue',
     options: [
-      {
-        name: 'bill_link',
-        type: ApplicationCommandOptionType.String,
-        description: 'Link to the Bill document',
-        required: true
-      },
       {
         name: 'bill_name',
         type: ApplicationCommandOptionType.String,
         description: 'Name of the Bill',
         required: true
+      },
+      {
+        name: 'bill_link',
+        type: ApplicationCommandOptionType.String,
+        description: 'Link to the Bill document',
+        required: true
       }
     ]
   },
   {
-    name: 'use_specialisation',
-    description: 'Use your specialisation at your current location'
+    name: 'use-specialisation',
+    description: 'Use your specialisation at your current location',
+    options: [
+      {
+        name: 'action',
+        type: ApplicationCommandOptionType.String,
+        description: 'What your doing at your location',
+        required: true
+      },
+    ]
   },
   {
-    name: 'run_end_of_month',
+    name: 'run-end-of-month',
     description: 'Run the End of Month',
     options: [
       {
@@ -79,7 +87,7 @@ const commands = [
     ]
   },
   {
-    name: 'check_mp_location',
+    name: 'check-mp-location',
     description: "Check an MP's current location.",
     options: [
       {
@@ -91,7 +99,39 @@ const commands = [
     ]
   },
   {
-    name: 'travel_to_location',
+    name: 'change-cabinet-member',
+    description: "Add or remove a Member of Parliament's cabinet position.",
+    options: [
+      {
+        name: 'mp',
+        type: ApplicationCommandOptionType.User,
+        description: 'Select a Member of Parliament',
+        required: true
+      },
+      {
+        name: 'action',
+        type: ApplicationCommandOptionType.String,
+        description: 'Choose whether to add or remove the cabinet role',
+        required: true,
+        choices: [
+          { name: 'Add', value: 'add' },
+          { name: 'Remove', value: 'remove' }
+        ]
+      },
+      {
+        name: 'role',
+        type: ApplicationCommandOptionType.String,
+        description: 'Select a cabinet role',
+        required: true,
+        choices: Object.keys(CABINETROLES).map(role => ({
+          name: role,
+          value: role
+        }))
+      }
+    ]
+  },
+  {
+    name: 'travel-to-location',
     description: 'Travel to a new location.',
     options: [
       {
@@ -99,7 +139,10 @@ const commands = [
         type: ApplicationCommandOptionType.String,
         description: 'Select your new location',
         required: true,
-        choices: PossibleLocations.map(location => ({ name: location, value: location }))
+        choices: PossibleLocations.map(location => ({ 
+          name: location.name, 
+          value: location.name 
+        }))
       }
     ]
   }

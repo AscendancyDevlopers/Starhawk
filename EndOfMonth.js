@@ -298,7 +298,6 @@ async function RunEndofMonth() {
   console.log(`\nComputed GDP Growth: ${(computedGDPGrowth * 100).toFixed(3)}%`);
 
   // ─── POPULATION GROUP ADJUSTMENTS ─────────
-  // For each set, randomize each group's size by ±2% then renormalize within the set.
   for (const setName in popGroupSets) {
     const groups = popGroupSets[setName];
     let originalTotal = groups.reduce((sum, g) => {
@@ -310,7 +309,7 @@ async function RunEndofMonth() {
     for (const g of groups) {
       let popItem = popData.find(p => p.group === g);
       if (popItem) {
-        let randSize = popItem.size * (1 + getRandomNumber(-0.02, 0.02));
+        let randSize = popItem.size * (1 + getRandomNumber(-0.04, 0.04));
         randomized[g] = randSize;
         sumRandom += randSize;
       }
@@ -322,7 +321,7 @@ async function RunEndofMonth() {
       }
     }
   }
-  // For any group not in a set, simply randomize its size by ±2%
+  // For any group not in a set, simply randomize its size
   for (const pd of popData) {
     let inSet = false;
     for (const setName in popGroupSets) {
@@ -332,7 +331,7 @@ async function RunEndofMonth() {
       }
     }
     if (!inSet) {
-      pd.newSize = pd.size * (1 + getRandomNumber(-0.02, 0.02));
+      pd.newSize = pd.size * (1 + getRandomNumber(-0.04, 0.04));
     }
   }
   // Normalize overall sizes to sum to 1
@@ -342,7 +341,7 @@ async function RunEndofMonth() {
   }
   // Update trust for each group: base trust is increased by 1.5% plus a random ±4%
   for (const pd of popData) {
-    pd.newTrust = pd.trust * (1 + 0.015 + getRandomNumber(-0.04, 0.04));
+    pd.newTrust = pd.trust * (1 + 0.02 + getRandomNumber(-0.04, 0.04));
   }
   // For income groups, update Avg Income by adding computedGDPGrowth and a random factor from –3% to 0%
   for (const pd of popData) {

@@ -1,14 +1,14 @@
 const { readCsv, downloadSheets } = require('./googleSheetsHandler');
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, Guild } = require('discord.js');
 const fs = require('fs');
-
-const APPLICATIONS_CSV_PATH = "./csv_files/Technocratic_Registration_form_for_Parliamentary_Service_(Responses)_Form responses 1.csv";
-const APPLICATIONS_CHANNEL_ID = "1304932857382174750";
-const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const GUILD_ID = process.env.GUILD_ID;
 
-const {SCHOLASTICFIELDROLES, MEMBER_OF_PARLIMENT, AREAROLES} = require('./roles');
+const APPLICATIONS_CSV_PATH = "./csv_files/Technocratic_Registration_form_for_Parliamentary_Service_(Responses)_Form responses 1.csv";
+const APPLICATIONS_CHANNEL_ID = "1351465487413936129";
+const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
+
+const {AWAITING_PARTY_CHOICE, SCHOLASTICFIELDROLES, MEMBER_OF_PARLIMENT, AREAROLES, ON_PARLIAMENT_GROUNDS} = require('./roles');
 // Path to the state file (CSV format)
 const STATE_FILE = "./csv_files/applications_state.csv";
 
@@ -64,11 +64,11 @@ function saveState(lastRowCount) {
 function buildApplicationEmbed(row) {
   const embed = new EmbedBuilder()
     .setColor(0x0099ff)
-    .setTitle("New Application Received");
+    .setTitle("Member of Parliment");
 
   embed.addFields(
-    { name: "Discord Username", value: row["Discord Account ID: (User ID, e.g basscleric2187)"] || "N/A"},
-    { name: "Legal Name", value: row["What is your full legal name as stipulated in the Official records of Novum Domitros?"] || "N/A" },
+    //{ name: "Discord Account ID", value: row["Discord Account ID: (User ID, e.g basscleric2187)"] || "N/A" },
+    { name: "Full Legal Name", value: row["What is your full legal name as stipulated in the Official records of Novum Domitros?"] || "N/A" },
     { name: "Age", value: row["What is your age as stipulated in the Official records of Novum Domitros?"] || "N/A", inline: true },
     { name: "Sex", value: row["What is your Sex?"] || "N/A", inline: true },
     { name: "Region of Birth", value: row["Region of birth?"] || "N/A" },
@@ -90,6 +90,7 @@ async function checkForNewApplications(client) {
     // Use readCsv to get an array of row objects.
     let rows = await readCsv(APPLICATIONS_CSV_PATH);
     rows = await readCsv(APPLICATIONS_CSV_PATH);
+    const guild = await client.guilds.fetch(GUILD_ID);
 
     try {
       console.log("Number of rows:", rows.length);
@@ -111,11 +112,6 @@ async function checkForNewApplications(client) {
       // New rows detected (assuming rows are appended)
       const newRows = validRows.slice(lastRowCount);
       const channel = await client.channels.fetch(APPLICATIONS_CHANNEL_ID);
-      for (const row of newRows) {
-        const embed = buildApplicationEmbed(row);
-        await channel.send({ embeds: [embed] });
-        console.log(`Posted new application for ${row["Discord Account ID: (User ID, e.g basscleric2187)"] || "Unknown"}`);
-      }
       lastRowCount = totalRows;
       saveState(lastRowCount);
 
@@ -140,10 +136,15 @@ async function checkForNewApplications(client) {
         // If a role was determined, assign it.
         if (roleToAssign) {
           try {
-            const member = await client.members.fetch(row["Discord Account ID: (User ID, e.g basscleric2187)"]);
+            const members = await guild.members.fetch();
+            const usernameFromRow = row["Discord Account ID: (User ID, e.g basscleric2187)"];
+            // Adjust matching as necessary (username or tag)
+            const member = members.find(m => m.user.username === usernameFromRow || m.user.tag === usernameFromRow);
             if (member) {
               await member.roles.add(roleToAssign);
               await member.roles.add(MEMBER_OF_PARLIMENT);
+              await member.roles.add(ON_PARLIAMENT_GROUNDS);
+              await member.roles.add(AWAITING_PARTY_CHOICE);
               console.log(`Assigned role for specialty "${specialty}" (field: "${row["Fields"]}") to ${member.user.tag}`);
             }
           } catch (roleError) {

@@ -10,7 +10,7 @@
 const createCsvWriter = require("csv-writer").createObjectCsvWriter;
 const fs = require('fs');
 const csv = require("csv-parser");
-const filePath = "users.csv";
+const filePath = "csv_files/MP_Locations.csv";
 
 
 function saveToCSV(users) {
