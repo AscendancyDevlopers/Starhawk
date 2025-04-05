@@ -64,7 +64,7 @@ function saveState(lastRowCount) {
 function buildApplicationEmbed(row) {
   const embed = new EmbedBuilder()
     .setColor(0x0099ff)
-    .setTitle("Member of Parliment");
+    .setTitle("Member of Parliament");
 
   embed.addFields(
     //{ name: "Discord Account ID", value: row["Discord Account ID: (User ID, e.g basscleric2187)"] || "N/A" },
@@ -74,8 +74,7 @@ function buildApplicationEmbed(row) {
     { name: "Region of Birth", value: row["Region of birth?"] || "N/A" },
     { name: "Region of Residence", value: row["Region of Residence?"] || "N/A" },
     { name: "Area of Specialty", value: row["Area of specialty:"] || "N/A", inline: true },
-    { name: "Fields", value: row["Fields"] || "N/A", inline: true },
-    { name: "History", value: row["Tell us about your history and what brought you to this moment"] || "N/A" }
+    { name: "Fields", value: row["Fields"] || "N/A", inline: true }
   );
   return embed;
 }
@@ -146,6 +145,12 @@ async function checkForNewApplications(client) {
               await member.roles.add(ON_PARLIAMENT_GROUNDS);
               await member.roles.add(AWAITING_PARTY_CHOICE);
               console.log(`Assigned role for specialty "${specialty}" (field: "${row["Fields"]}") to ${member.user.tag}`);
+            } else {
+              // If member is not found, post a message to the specified channel
+              const lookupFailedChannel = await client.channels.fetch("1093061364219662346");
+              await lookupFailedChannel.send(
+                `User {Discord Account ID: ${usernameFromRow}} lookup failed please manually give them their roles`
+              );
             }
           } catch (roleError) {
             console.error(`Error assigning role for specialty "${specialty}":`, roleError);
@@ -159,6 +164,7 @@ async function checkForNewApplications(client) {
     console.error("Error checking for new applications:", error);
   }
 }
+
 
 /**
  * Start watching the application sheet every 15 minutes.

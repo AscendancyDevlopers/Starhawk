@@ -11,8 +11,8 @@ if (!BillsInQueue || !Array.isArray(BillsInQueue)) {
 
 const commands = [
   {
-    name: 'add-bill-for-oversight-committee',
-    description: 'Add a bill to the Oversight Committees Queue',
+    name: 'add-bill-for-oversight-council',
+    description: 'Add a bill to the Oversight Councils Queue',
     options: [
       {
         name: 'bill_name',
@@ -40,6 +40,18 @@ const commands = [
       }
     ]
   },
+  {
+    name: 'adjust-the-interest-rate',
+    description: 'Make a Change to the Interest Rate',
+    options: [
+      {
+        name: 'new_rate',
+        type: ApplicationCommandOptionType.Number,
+        description: 'The New Interest Rate, 0.00 to 100.00',
+        required: true
+      }
+    ]
+  },  
   {
     name: 'bot-stats',
     description: 'Show the bot’s stats'
@@ -138,6 +150,22 @@ const commands = [
         name: 'travel_location',
         type: ApplicationCommandOptionType.String,
         description: 'Select your new location',
+        required: true,
+        choices: PossibleLocations.map(location => ({ 
+          name: location.name, 
+          value: location.name 
+        }))
+      }
+    ]
+  },
+  {
+    name: 'create-vote',
+    description: 'Create a Vote',
+    options: [
+      {
+        name: 'bill',
+        type: ApplicationCommandOptionType.String,
+        description: 'Select the bill you want to start a vote on',
         required: true,
         choices: PossibleLocations.map(location => ({ 
           name: location.name, 

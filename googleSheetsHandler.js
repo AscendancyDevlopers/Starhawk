@@ -27,29 +27,23 @@ function extractSpreadsheetId(link) {
  * Downloads sheets from given spreadsheet IDs or links.
  * @param {string[] | string} sheetInputs - An array of spreadsheet IDs or links (or a single input).
  */
-async function downloadSheets(sheetInputs) {
+async function downloadSheets(sheetInputs, outputDir = CSV_DIR) {
     if (!Array.isArray(sheetInputs)) {
         sheetInputs = [sheetInputs]; // Convert single input to an array
     }
-
     for (let input of sheetInputs) {
         const sheetId = extractSpreadsheetId(input); // Extract ID from link if needed
-
         try {
             const sheetInfo = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
             const sheetTitle = sheetInfo.data.properties.title.replace(/\s+/g, "_");
-
             for (const sheet of sheetInfo.data.sheets) {
                 const sheetName = sheet.properties.title;
                 const range = `${sheetName}`;
-
                 const response = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range });
                 const data = response.data.values || [];
-
-                const csvFilePath = `${CSV_DIR}/${sheetTitle}_${sheetName}.csv`;
+                const csvFilePath = `${outputDir}/${sheetTitle}_${sheetName}.csv`;
                 const ws = fs.createWriteStream(csvFilePath);
                 fastCsv.write(data, { headers: true }).pipe(ws);
-
                 console.log(`✅ Saved: ${csvFilePath}`);
             }
         } catch (error) {
@@ -135,51 +129,62 @@ async function testGoogleSheetsConnection() {
     }
 }
 
-async function readCell(filePath, rowNameOrCell, colName = null) {
+async function readCell(filePath, rowNameOrCell, colName = null, headerRow = 2) {
     const data = await readCsv(filePath);
-    
+  
     // If colName is null, assume rowNameOrCell is a direct cell reference (e.g., "B2")
     if (!colName) {
-        const match = rowNameOrCell.match(/^([A-Z]+)(\d+)$/);
-        if (!match) {
-            console.error("Invalid cell reference format.");
-            return;
-        }
-
-        const [, colLetter, rowNumber] = match;
-        const colIndex = colLetter.split('').reduce((acc, char) => acc * 26 + (char.charCodeAt(0) - 64), -1);
-        
-        if (rowNumber <= 1 || colIndex < 0) {
-            console.error("Invalid cell reference.");
-            return;
-        }
-
-        const row = data[rowNumber - 2]; // Adjust for header row
-        if (!row) {
-            console.error("Row out of range.");
-            return;
-        }
-        
-        const headers = Object.keys(data[0]);
-        return row[headers[colIndex]];
+      const match = rowNameOrCell.match(/^([A-Z]+)(\d+)$/);
+      if (!match) {
+        console.error("Invalid cell reference format.");
+        return;
+      }
+  
+      const [, colLetter, rowNumberStr] = match;
+      const rowNumber = parseInt(rowNumberStr, 10);
+      const colIndex = colLetter.split('').reduce((acc, char) => acc * 26 + (char.charCodeAt(0) - 64), -1);
+  
+      // Adjust row index: headerRow is the row where headers start,
+      // so the data rows start at headerRow+1
+      if (rowNumber <= headerRow || colIndex < 0) {
+        console.error("Invalid cell reference.");
+        return;
+      }
+  
+      // row index in data array: subtract headerRow+1 (since data[0] corresponds to headerRow)
+      const dataRowIndex = rowNumber - (headerRow + 1);
+      if (dataRowIndex < 0 || dataRowIndex >= data.length) {
+        console.error("Row out of range.");
+        return;
+      }
+      
+      const headers = Object.keys(data[0]);
+      if (colIndex >= headers.length) {
+        console.error("Column out of range.");
+        return;
+      }
+      
+      return data[dataRowIndex][headers[colIndex]];
     }
-
-    // Otherwise, use row and column headers to locate the value
+  
+    // Otherwise, use row and column headers to locate the value.
+    // The headers are assumed to be in data[0] from the headerRow.
     const headers = Object.keys(data[0]);
     const colIndex = headers.indexOf(colName);
     if (colIndex === -1) {
-        console.error(`Column "${colName}" not found.`);
-        return;
+      console.error(`Column "${colName}" not found.`);
+      return;
     }
-
+  
+    // Search rows starting from row index headerRow (i.e. data[0] is row headerRow)
     for (const row of data) {
-        if (row[headers[0]] === rowNameOrCell) {
-            return row[colName];
-        }
+      if (row[headers[0]] === rowNameOrCell) {
+        return row[colName];
+      }
     }
-
+  
     console.error(`Row "${rowNameOrCell}" not found.`);
     return;
-} 
+  }
   
 module.exports = {readCsv, readCell, testGoogleSheetsConnection, downloadSheets, editCsv, uploadCsv };

@@ -37,6 +37,8 @@ const MapURL = 'https://ascendancydevlopers.github.io/Ascendancy-Maps/#19/-0.001
 // Register slash commands with Discord
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 
+const travelingUsers = new Set();
+
 // File Imports
 const {commands} = require('./commands');
 const {SecureLocations, PossibleLocations} = require('./Locations');
@@ -46,7 +48,8 @@ const {MEMBER_OF_PARLIMENT,
   ON_PARLIAMENT_GROUNDS,
   CABINETROLES,
   PRIME_MINISTER,
-  CABINET_MEMBER} = require('./roles');
+  CABINET_MEMBER,
+  RESERVE_BANK_GOV} = require('./roles');
 const {readCSV, saveToCSV} = require('./CSV');
 const {getAllUserLocations, USERS_CSV_PATH, getUserLocation, setUserLocation} = require('./UserLocation');
 const {scheduleTimer} = require('./timers');
@@ -106,18 +109,20 @@ async function SetupBillQueue() {
   console.log('Bills In Queue:', BillsInQueue);
 
   try {
-    // Fetch current commands
-    const commands = await rest.get(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID));
+    // Fetch current guild commands
+    const fetchedCommands = await rest.get(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID));
+    console.log('Registered Commands:', fetchedCommands.map(cmd => cmd.name)); // Debug log
 
-    // Find the /create_vote command
-    const createVoteCommand = commands.find(cmd => cmd.name === 'create_vote');
-
+    // Find the /create-vote command (ensure the name matches exactly)
+    const createVoteCommand = fetchedCommands.find(cmd => cmd.name === 'create-vote');
+    
     if (!createVoteCommand) {
-      console.log('Command /create_vote not found.');
+      console.log('Command /create-vote not found.');
       return;
     }
 
-    // Update the options for the /create_vote command
+    // Update the first option's choices for the /create-vote command
+    // (Assuming the first option is the one you want to update)
     createVoteCommand.options[0].choices = BillsInQueue.map(bill => ({
       name: bill,
       value: bill
@@ -128,9 +133,9 @@ async function SetupBillQueue() {
       body: createVoteCommand
     });
 
-    console.log('Command /create_vote updated successfully!');
+    console.log('Command /create-vote updated successfully!');
   } catch (error) {
-    console.error('Error updating /create_vote command:', error);
+    console.error('Error updating /create-vote command:', error);
   }
 }
 
@@ -213,7 +218,7 @@ client.on('interactionCreate', async interaction => {
       }
     }
 
-    if (commandName === "create_vote") {
+    if (commandName === "create-vote") {
       try {
         const filePath = './csv_files/Bill_Queue_Queue.csv';
         // Check if the user has the 'MEMBER_OF_PARLIAMENT' role
@@ -284,7 +289,7 @@ client.on('interactionCreate', async interaction => {
       }
     }
 
-    if (commandName === "check_mp_location") {
+    if (commandName === "check-mp-location") {
       const targetUser = options.getUser("mp");
       try {
         if (targetUser) {
@@ -356,7 +361,7 @@ client.on('interactionCreate', async interaction => {
       }
     }    
   
-    if (commandName === "travel_to_location") {
+    if (commandName === "travel-to-location") {
       const targetUser = user;
       const targetMember = await interaction.guild.members.fetch(user.id);
       const newLocation = options.getString("travel_location");
@@ -365,9 +370,19 @@ client.on('interactionCreate', async interaction => {
           return interaction.reply("You don't have permission to use this command.");
       }
   
+      // Check if user is already traveling (using a global Set travelingUsers)
+      if (travelingUsers.has(targetUser.id)) {
+          return interaction.reply("You are already traveling!");
+      }
+  
+      // Check if the user is already at the new location
+      const currentLocation = await getUserLocation(targetUser.id);
+      if (currentLocation === newLocation) {
+          return interaction.reply("You are already at that location.");
+      }
+  
       // Find location object from PossibleLocations
       const locationData = PossibleLocations.find(loc => loc.name === newLocation);
-      
       if (!locationData) {
           await interaction.reply(
               `Invalid location. Choose from: ${PossibleLocations.map(loc => loc.name).join(", ")}`
@@ -393,6 +408,9 @@ client.on('interactionCreate', async interaction => {
       await interaction.reply({ embeds: [travelEmbed] });
       logCommandUsage(commandName, member, `Scheduled move to ${newLocation}`);
   
+      // Mark user as traveling
+      travelingUsers.add(targetUser.id);
+  
       // Schedule timer for travel completion
       scheduleTimer(
           `travel_${targetUser.id}`,
@@ -417,16 +435,17 @@ client.on('interactionCreate', async interaction => {
                       .setImage(locationData.url)
                       .setURL(MapURL)
                       .setColor(0x00ff00);
-
-                    
   
                   await interaction.followUp({ embeds: [arrivalEmbed] });
               } catch (error) {
                   console.error("Error updating location after delay:", error);
+              } finally {
+                  // Remove user from traveling set regardless of success or failure
+                  travelingUsers.delete(targetUser.id);
               }
           }
       );
-    }  
+  }  
   
     // test_bot command
     if (commandName === 'test_bot') {
@@ -473,7 +492,7 @@ client.on('interactionCreate', async interaction => {
       }
     }
   
-    if (commandName === 'add-bill-for-oversight-committee') {
+    if (commandName === 'add-bill-for-oversight-council') {
       if (!member.roles.cache.some(role => role.id === LEADER_OF_THE_HOUSE)) {
         return interaction.reply("You don't have permission to use this command.");
       }
@@ -736,6 +755,57 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply("There was an error processing your request.");
       }
     }
+
+    if (commandName == 'adjust-the-interest-rate')
+    {
+      if (!member.roles.cache.some(role => role.id === RESERVE_BANK_GOV)) {
+        return interaction.reply("You don't have permission to use this command.");
+      }
+      let new_rate = options.getNumber('new_rate');
+      new_rate = new_rate / 100;
+
+
+      try {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SPREADSHEET_IDS,
+          range: `MetricsData!B7`,
+          valueInputOption: "RAW",
+          requestBody: {
+            values: [[new_rate]] 
+          }
+        });
+
+        const new_rate_label = `${new_rate*100}%`;
+
+        const action = `Intrest Rate updated to ${new_rate_label}`;
+        const dateObj = new Date();
+        const currentDate = ("0" + dateObj.getDate()).slice(-2) + "-" +
+                            ("0" + (dateObj.getMonth() + 1)).slice(-2) + "-" +
+                            dateObj.getFullYear();
+    
+        // Append event to Google Sheets
+        const request = {
+          spreadsheetId: '1xMv0ndSax-IukyL0N5qKbVkUCF2ArhCaehvP2Jh7ewY',
+          range: 'Events!A:B',
+          valueInputOption: 'USER_ENTERED',
+          insertDataOption: 'INSERT_ROWS',
+          requestBody: {
+            values: [
+              [action, currentDate]
+            ]
+          }
+        };
+
+        await sheets.spreadsheets.values.append(request);
+        
+        console.log(`Intrest Rate Adjusted\nNew Rate: ${new_rate_label}`)
+        return interaction.reply(`Intrest Rate Adjusted\nNew Rate: ${new_rate_label}`);
+
+      } catch (error) {
+        console.error('Error in Adjusting the intrest rate command:', error);
+        await interaction.reply("There was an error processing your request.");
+      }
+    }
 }); 
 
 
@@ -751,7 +821,7 @@ async function startup() {
   await downloadSheets('1eqvvVo5-uS1SU8dGaRy3tvGEB7zHjZp53whQUU5CVRI');
   console.log(await getAllUserLocations());
   await SetupBillQueue();
-  //await watchApplicationSheet(client); - Turn on at Launch
+  await watchApplicationSheet(client);
 }
 
 startup();
