@@ -818,7 +818,7 @@ try {
 
 // Startup functions
 async function startup() {
-  await downloadSheets('1eqvvVo5-uS1SU8dGaRy3tvGEB7zHjZp53whQUU5CVRI');
+  //await downloadSheets('1eqvvVo5-uS1SU8dGaRy3tvGEB7zHjZp53whQUU5CVRI');
   console.log(await getAllUserLocations());
   await SetupBillQueue();
   await watchApplicationSheet(client);
