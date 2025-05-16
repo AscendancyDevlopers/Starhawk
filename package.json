@@ -16,6 +16,7 @@
     "discord.js": "^14.19.3",
     "dotenv": "^16.5.0",
     "fast-csv": "^5.0.2",
+    "fs": "^0.0.1-security",
     "googleapis": "^148.0.0",
     "timers": "^0.1.1"
   },
