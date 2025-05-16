@@ -1,0 +1,15 @@
+Class,Hull,Heavy Battery,Light Battery,Point Defence,Storage,FCS,Fuel,Scanner,Missile,Armour,Hanger,FTL Drive,Slots Unused,Upkeep,Production Cost,Design Cost,,Hull,Slots,Hull Type,Ship HP,Base Fuel,Design Time (D),Design Cost,Production Cost,Upkeep,Crew,Description,,Slot Type,Size,Design Cost,Production,Upkeep,Description
+Example PDV,Tiny,0,3,1,0,FALSE,0,FALSE,0,FALSE,0,FALSE,0,$Bn 18.8,$Bn 64.0,$Bn 181.9,,Fighter,2,Fighter,4,0,0,$Bn 42,$Bn 15,$Bn 2,60,Fighter Squadron,,Heavy Battery,1,$Bn 128.3,$Bn 45.0,$Bn 14.9,Targets Capital Type
+Example Picket,Tiny,0,0,2,0,FALSE,1,FALSE,0,FALSE,0,TRUE,0,$Bn 43.2,$Bn 138.0,$Bn 392.8,,Tiny,4,Screen,8,0,7,$Bn 28,$Bn 10,$Bn 1,60,Corvette/Gunboat,,Light Battery,1,$Bn 42.8,$Bn 15.0,$Bn 5.0,Targets Screen Type
+Example Corvete,Tiny,0,1,1,0,FALSE,1,FALSE,0,FALSE,0,TRUE,0,$Bn 45.2,$Bn 144.0,$Bn 409.9,,Small,9,Screen,16,1,7,$Bn 224,$Bn 80,$Bn 8,125,Frigate,,Point Defence,1,$Bn 25.7,$Bn 9.0,$Bn 3.0,Targets Fighter Type
+Example Destroyer,Medium,0,3,1,0,TRUE,1,FALSE,7,FALSE,0,TRUE,0,$Bn 118.7,$Bn 534.0,$Bn 1509.4,,Medium,14,Screen,24,1,7,$Bn 700,$Bn 250,$Bn 25,400,Destroyer,,Storage,1,$Bn 28.5,$Bn 10.0,$Bn 3.3,Allows Transport of Goods
+Example AA Destroyer,Medium,0,0,9,0,TRUE,1,FALSE,0,TRUE,0,TRUE,0,$Bn 101.2,$Bn 481.0,$Bn 1358.4,,Large,19,Capital,32,2,14,$Bn 1260,$Bn 450,$Bn 45,900,Cruiser,,FCS,1,$Bn 42.8,$Bn 15.0,$Bn 5.0,Fire Control System
+Example Light Cruiser,Large,0,13,1,0,TRUE,1,FALSE,0,TRUE,0,TRUE,0,$Bn 161.8,$Bn 804.0,$Bn 2268.9,,Huge,24,Capital,40,2,14,$Bn 6160,"$Bn 2,200",$Bn 220,5000,Battleship,,Fuel,1,$Bn 28.5,$Bn 10.0,$Bn 3.3,Allows Transport of 3 Fuel
+Example Heavy Cruiser,Large,13,0,1,0,TRUE,1,FALSE,0,TRUE,0,TRUE,0,$Bn 290.5,$Bn 1194.0,$Bn 3380.4,,Giant,32,Capital,48,3,14,$Bn 42000,"$Bn 15,000","$Bn 1,500",20000,Super Battleship,,Scanner,4,$Bn 114.0,$Bn 40.0,$Bn 13.2,Allows Scanning of district
+Example Battleship,Huge,18,0,1,0,TRUE,1,FALSE,0,TRUE,0,TRUE,0,$Bn 539.8,$Bn 3169.0,$Bn 8921.7,,,,,,,,,,,,,,Missile,1,$Bn 42.8,$Bn 15.0,$Bn 5.0,Ignores Armour
+Example Carrier,Huge,0,0,0,0,FALSE,1,FALSE,0,TRUE,5,TRUE,0,$Bn 1089.6,$Bn 4835.0,$Bn 13669.8,,,,,,,,,,,,,,Armour,2,$Bn 71.3,$Bn 25.0,$Bn 8.3,Blocks Attacks
+Example Fuel Carrier,Medium,0,1,1,0,FALSE,11,FALSE,0,FALSE,0,TRUE,0,$Bn 102.2,$Bn 484.0,$Bn 1366.9,,,,,,,,,,,,,,Hanger,4,$Bn 1425.0,$Bn 500.0,$Bn 165.0,Hanger for aircraft Squadron
+Example Transport,Medium,0,1,1,10,FALSE,1,FALSE,0,FALSE,0,TRUE,0,$Bn 102.2,$Bn 484.0,$Bn 1366.9,,,,,,,,,,,,,,FTL Drive,1,$Bn 285.0,$Bn 100.0,$Bn 33.0,Allows travel Between Districts
+Example Explorer,Small,0,1,1,0,FALSE,2,TRUE,0,FALSE,0,TRUE,0,$Bn 68.7,$Bn 264.0,$Bn 748.4,,,,,,,,,,,,,,,,,,,
+Example Frigate,Small,0,3,1,0,TRUE,1,FALSE,2,FALSE,0,TRUE,0,$Bn 77.0,$Bn 289.0,$Bn 819.7,,,,,,,,,,,,,,,,,,,
+Defence Frigate,Small,0,5,1,0,TRUE,0,FALSE,0,TRUE,0,FALSE,0,$Bn 48.9,$Bn 204.0,$Bn 577.4,,,,,,,,,,,,,,,,,,,

@@ -1,0 +1,13 @@
+Voter Groups,Size,Trust in Government,Avg Income
+Liberal,0.534,0.65,$0
+Conservative,0.466,0.35,$0
+Capitalist,0.561,0.43,$0
+Socialist,0.439,0.57,$0
+Youth,0.187,0.53,$0
+Adult,0.647,0.50,$0
+Seniors,0.166,0.38,$0
+Religious,0.182,0.32,$0
+Non Religious,0.818,0.61,$0
+Low Income,0.550,0.57,"$27,223"
+Medium Income,0.300,0.51,"$72,593"
+High Income,0.150,0.43,"$175,236"

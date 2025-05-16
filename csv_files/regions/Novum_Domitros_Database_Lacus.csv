@@ -1,0 +1,80 @@
+Field,Data
+Population,7339864.0000
+Weights,0.17
+Liberal Size,0.4579
+Liberal Trust in Government,0.6076
+Conservative Size,0.5521
+Conservative Trust in Government,0.4038
+Capitalist Size,0.5720
+Capitalist Trust in Government,0.4249
+Socialist Size,0.4280
+Socialist Trust in Government,0.5282
+Youth Size,0.1719
+Youth Trust in Government,0.5244
+Adult Size,0.5590
+Adult Trust in Government,0.5169
+Seniors Size,0.1691
+Seniors Trust in Government,0.3759
+Religious Size,0.2054
+Religious Trust in Government,0.3864
+Non Religious Size,0.7946
+Non Religious Trust in Government,0.7094
+Low Income Size,0.5792
+Low Income Trust in Government,0.4670
+Low Income Avg Income,30268.3396
+Medium Income Size,0.3181
+Medium Income Trust in Government,0.6185
+Medium Income Avg Income,88658.1034
+High Income Size,0.1327
+High Income Trust in Government,0.4404
+High Income Avg Income,174136.9184
+Average Income,66830.7651
+Population Happiness,0.5226
+GDP,5029178473292.0078
+Government Asset Budget,76430195523.0101
+Office,528616125836.1467
+Construction,371838139678.3765
+Healthcare,371370093523.5990
+Manufacturing,653306027704.6511
+Real Estate,344184043648.7335
+Finance,323975075345.0846
+Retail,377154613726.3409
+Agriculture,290934218803.3826
+Forestry,38789055646.6165
+Fishing,67433621791.0160
+Defence,200515227273.8811
+Information,222748929213.8517
+Transport,221219268432.1088
+Electricity,164301412310.8650
+Water,38893968447.4523
+Mining,44349541686.6526
+Education,240834923380.8319
+Other,528714186842.4166
+Public Service,"448,868,113.00"
+Illicit,"5,380,830,875.00"
+Colonial Holdings,0.00
+Foreign Trade,0.00
+Unemployment,0.0200
+Productivity,1051.1148
+Financial Malpractice,0.0106
+Poverty Rate,0.1783
+Life Expectancy,84.6863
+Pop Growth Rate,0.0235
+Homeownership Rate,0.7185
+Crime Rate,0.0421
+Primary Education,0.9744
+Secondary Education,0.7179
+Tertiary Education,0.5439
+Inflation,0.0343
+Big Mac Index,11.0975
+Consumer Spending,5329465723562.8203
+Police Stations needed,24.0000
+Power Consumer,3.0000
+Internet Towers Needed,4.0000
+Communication Towers Needed,3.0000
+Hospitals Needed,2.0000
+Police Stations,0
+Power Produced,0
+Internet Towers,0
+Communication Towers,0
+Hospitals,0
