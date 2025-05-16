@@ -1,0 +1,16 @@
+{
+  "name": "starhawk",
+  "version": "1.0.0",
+  "description": "Test",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.19.3"
+  }
+}
