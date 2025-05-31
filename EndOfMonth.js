@@ -935,5 +935,5 @@ class EndOfMonthProcessor {
   }
 }
 
-const processor = new EndOfMonthProcessor();
-processor.run();
+// const processor = new EndOfMonthProcessor();
+// processor.run();

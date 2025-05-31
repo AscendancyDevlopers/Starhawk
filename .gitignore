@@ -134,3 +134,6 @@ credentials.json
 # user data
 .json
 service-account.json
+/Python Scripts
+/csv_files/regions
+/csv_files/shared

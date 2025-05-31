@@ -29,8 +29,6 @@ const SPREADSHEET_IDS = process.env.SHEET_IDS.split(",");
 
 // Constants
 const LOG_CHANNEL_ID = '1105379725100187732';
-const ROLE_ID = '1289810234826821674';
-const VOICE_CHANNEL_ID = '1339050143218929674';
 const MOVE_TIME = 8 * 60 * 60 * 1000; 
 const MapURL = 'https://ascendancydevlopers.github.io/Ascendancy-Maps/#19/-0.00115/0.03629';
 
@@ -50,10 +48,9 @@ const {MEMBER_OF_PARLIMENT,
   PRIME_MINISTER,
   CABINET_MEMBER,
   RESERVE_BANK_GOV} = require('./roles');
-const {readCSV, saveToCSV} = require('./CSV');
-const {getAllUserLocations, USERS_CSV_PATH, getUserLocation, setUserLocation} = require('./UserLocation');
+const {startupUserLocations, getAllUserLocations, getUserLocation, setUserLocation} = require('./UserLocation');
 const {scheduleTimer} = require('./timers');
-const {downloadSheets, editCsv, uploadCsv, readCsv, readCell} = require('./googleSheetsHandler');
+const {downloadSheets, readCsv, readCell} = require('./googleSheetsHandler');
 const {RunEndofMonth} = require('./EndOfMonth');
 const { watchApplicationSheet } = require('./WatchApplicationsFile');
 
@@ -70,7 +67,6 @@ const { watchApplicationSheet } = require('./WatchApplicationsFile');
 // Event: Bot is ready
 client.once('ready', () => {
     console.log(`Starhawk is online! Logged in as ${client.user.tag}`);
-    fetchUsersWithRole();
 });
 
 // Function to create a delay using Promise and async/await
@@ -78,69 +74,47 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Function to update the voice channel name with the number of "Contractor" members
-async function updateVoiceChannel() {
-    try {
-        const guild = await client.guilds.fetch(GUILD_ID);
-        const voiceChannel = await guild.channels.fetch(VOICE_CHANNEL_ID);
+// async function SetupBillQueue() {
+//   const filePath = './csv_files/Bill_Queue_Queue.csv';
+//   const data = await readCsv(filePath);
 
-        // Get all members in the guild
-        const members = await guild.members.fetch();
-
-        // Count the number of members with the "Contractor" role
-        const MPCount = members.filter(member => member.roles.cache.has(MEMBER_OF_PARLIMENT)).size;
-
-        // Update the voice channel name
-        await voiceChannel.setName(`Members of Parliment: ${MPCount}`);
-    } catch (error) {
-        console.error('Error updating voice channel name:', error);
-    }
-}
-
-async function SetupBillQueue() {
-  const filePath = './csv_files/Bill_Queue_Queue.csv';
-  const data = await readCsv(filePath);
-
-  // Extract values from Column A (First Column)
-  const columnAValues = data.map(row => row[Object.keys(data[0])[0]]);
+//   // Extract values from Column A (First Column)
+//   const columnAValues = data.map(row => row[Object.keys(data[0])[0]]);
   
-  // Set BillsInQueue to the extracted values
-  BillsInQueue = columnAValues;
-  console.log('Bills In Queue:', BillsInQueue);
+//   // Set BillsInQueue to the extracted values
+//   let BillsInQueue = columnAValues;
+//   console.log('Bills In Queue:', BillsInQueue);
 
-  try {
-    // Fetch current guild commands
-    const fetchedCommands = await rest.get(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID));
-    console.log('Registered Commands:', fetchedCommands.map(cmd => cmd.name)); // Debug log
+//   try {
+//     // Fetch current guild commands
+//     const fetchedCommands = await rest.get(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID));
+//     console.log('Registered Commands:', fetchedCommands.map(cmd => cmd.name)); // Debug log
 
-    // Find the /create-vote command (ensure the name matches exactly)
-    const createVoteCommand = fetchedCommands.find(cmd => cmd.name === 'create-vote');
+//     // Find the /create-vote command (ensure the name matches exactly)
+//     const createVoteCommand = fetchedCommands.find(cmd => cmd.name === 'create-vote');
     
-    if (!createVoteCommand) {
-      console.log('Command /create-vote not found.');
-      return;
-    }
+//     if (!createVoteCommand) {
+//       console.log('Command /create-vote not found.');
+//       return;
+//     }
 
-    // Update the first option's choices for the /create-vote command
-    // (Assuming the first option is the one you want to update)
-    createVoteCommand.options[0].choices = BillsInQueue.map(bill => ({
-      name: bill,
-      value: bill
-    }));
+//     // Update the first option's choices for the /create-vote command
+//     // (Assuming the first option is the one you want to update)
+//     createVoteCommand.options[0].choices = BillsInQueue.map(bill => ({
+//       name: bill,
+//       value: bill
+//     }));
 
-    // Send the updated command back to Discord
-    await rest.patch(Routes.applicationGuildCommand(CLIENT_ID, GUILD_ID, createVoteCommand.id), {
-      body: createVoteCommand
-    });
+//     // Send the updated command back to Discord
+//     await rest.patch(Routes.applicationGuildCommand(CLIENT_ID, GUILD_ID, createVoteCommand.id), {
+//       body: createVoteCommand
+//     });
 
-    console.log('Command /create-vote updated successfully!');
-  } catch (error) {
-    console.error('Error updating /create-vote command:', error);
-  }
-}
-
-// Update every 5 minutes
-setInterval(updateVoiceChannel, 5 * 60 * 1000); // 5 minutes
+//     console.log('Command /create-vote updated successfully!');
+//   } catch (error) {
+//     console.error('Error updating /create-vote command:', error);
+//   }
+// }
 
 // Log command usage and conditions
 async function logCommandUsage(commandName, user, conditions) {
@@ -149,17 +123,12 @@ async function logCommandUsage(commandName, user, conditions) {
     await logChannel.send(`Command: /${commandName} used by ${user} with conditions: ${conditions}`);
 }
 
-async function fetchUsersWithRole() {
+async function fetchAllMPs() {
     try {
-        // Ensure the CSV file exists with the proper header
-        if (!fs.existsSync(USERS_CSV_PATH)) {
-            fs.writeFileSync(USERS_CSV_PATH, "userId,username,location\n", { flag: "w" });
-        }
-
         const guild = await client.guilds.fetch(GUILD_ID);
         await guild.members.fetch(); // Fetch all members
 
-        const role = guild.roles.cache.get(ROLE_ID);
+        const role = guild.roles.cache.get(MEMBER_OF_PARLIMENT);
         if (!role) {
             console.error("Role not found.");
             return;
@@ -170,25 +139,16 @@ async function fetchUsersWithRole() {
             console.log(`Fetched Member: ${member.user.username} | ID: ${member.user.id}`);
         });
 
-        // Read existing users from CSV and filter out empty rows
-        let existingUsers = await readCSV();
-        existingUsers = existingUsers.filter(user => user.userId && user.userId.trim() !== "");
-
-        // Create a set of existing user IDs
-        const existingUserIds = new Set(existingUsers.map(user => user.userId));
-
-        // Filter only new users (those not already in the CSV)
+        // Filter only new users
         const newUsers = role.members
-            .filter(member => !existingUserIds.has(member.user.id))
             .map(member => ({
-                userId: member.user.id,
-                username: member.user.username,
-                location: PossibleLocations[0].name
+                id: member.user.id,
+                username: member.user.username
             }));
 
         if (newUsers.length > 0) {
             console.log(`Adding ${newUsers.length} new users.`);
-            saveToCSV([...existingUsers, ...newUsers]);
+            return newUsers;
         } else {
             console.log("No new users to add.");
         }
@@ -218,76 +178,76 @@ client.on('interactionCreate', async interaction => {
       }
     }
 
-    if (commandName === "create-vote") {
-      try {
-        const filePath = './csv_files/Bill_Queue_Queue.csv';
-        // Check if the user has the 'MEMBER_OF_PARLIAMENT' role
-        if (!member.roles.cache.some(role => role.id === LEADER_OF_THE_HOUSE)) {
-            return interaction.reply("You don't have permission to use this command.");
-        }
+    // if (commandName === "create-vote") {
+    //   try {
+    //     const filePath = './csv_files/Bill_Queue_Queue.csv';
+    //     // Check if the user has the 'MEMBER_OF_PARLIAMENT' role
+    //     if (!member.roles.cache.some(role => role.id === LEADER_OF_THE_HOUSE)) {
+    //         return interaction.reply("You don't have permission to use this command.");
+    //     }
 
-        // Get the bill name and link from the queue using readCell (replace with the correct logic to get the bill data)
-        const billName = interaction.options.getString('bill');
-        const billLink = await readCell(filePath, billName, 'Link to Bill'); // Replace with your logic to fetch the link from the queue
-        console.log(billLink);
+    //     // Get the bill name and link from the queue using readCell (replace with the correct logic to get the bill data)
+    //     const billName = interaction.options.getString('bill');
+    //     const billLink = await readCell(filePath, billName, 'Link to Bill'); // Replace with your logic to fetch the link from the queue
+    //     console.log(billLink);
 
-        // Create the embed for the vote
-        const voteEmbed = new EmbedBuilder()
-            .setTitle(`Vote on Bill: ${billName}`)
-            .setDescription(`Click below to vote on the bill. ✅ to vote Yes, ❌ to vote No.`)
-            .addFields(
-                { name: "Bill Name", value: billName, inline: false },
-                { name: "Bill Link", value: billLink, inline: false }
-            )
-            .setColor(0x0099ff)
-            .setTimestamp(new Date());
+    //     // Create the embed for the vote
+    //     const voteEmbed = new EmbedBuilder()
+    //         .setTitle(`Vote on Bill: ${billName}`)
+    //         .setDescription(`Click below to vote on the bill. ✅ to vote Yes, ❌ to vote No.`)
+    //         .addFields(
+    //             { name: "Bill Name", value: billName, inline: false },
+    //             { name: "Bill Link", value: billLink, inline: false }
+    //         )
+    //         .setColor(0x0099ff)
+    //         .setTimestamp(new Date());
 
-        // Send the embed to the specified channel (1352558511376306226)
-        const channel = await interaction.client.channels.fetch('1352558511376306226');
-        const voteMessage = await channel.send({ embeds: [voteEmbed] });
+    //     // Send the embed to the specified channel (1352558511376306226)
+    //     const channel = await interaction.client.channels.fetch('1352558511376306226');
+    //     const voteMessage = await channel.send({ embeds: [voteEmbed] });
 
-        // Add reactions to the message for voting
-        await voteMessage.react('❌');
-        await voteMessage.react('✅');
+    //     // Add reactions to the message for voting
+    //     await voteMessage.react('❌');
+    //     await voteMessage.react('✅');
 
-        // Schedule a function to count reactions after 24 hours
-        setTimeout(async () => {
-            const message = await channel.messages.fetch(voteMessage.id);
+    //     // Schedule a function to count reactions after 24 hours
+    //     setTimeout(async () => {
+    //         const message = await channel.messages.fetch(voteMessage.id);
           
-            // Ensure reactions are fully cached
-            await message.fetch();
+    //         // Ensure reactions are fully cached
+    //         await message.fetch();
     
-            // Get the count of reactions for each emoji
-            const upvoteReaction = message.reactions.cache.get('✅');
-            const downvoteReaction = message.reactions.cache.get('❌');
+    //         // Get the count of reactions for each emoji
+    //         const upvoteReaction = message.reactions.cache.get('✅');
+    //         const downvoteReaction = message.reactions.cache.get('❌');
     
-            // Safely access the count or set to 0 if undefined
-            const upvoteCount = upvoteReaction ? upvoteReaction.count : 0;
-            const downvoteCount = downvoteReaction ? downvoteReaction.count : 0;
+    //         // Safely access the count or set to 0 if undefined
+    //         const upvoteCount = upvoteReaction ? upvoteReaction.count : 0;
+    //         const downvoteCount = downvoteReaction ? downvoteReaction.count : 0;
 
-            // Create the result embed
-            const resultEmbed = new EmbedBuilder()
-                .setTitle(`Voting Results for Bill: ${billName}`)
-                .addFields(
-                    { name: "Yes Votes", value: `${upvoteCount - 1}`, inline: true }, // Subtracting 1 for the initial reaction
-                    { name: "No Votes", value: `${downvoteCount - 1}`, inline: true },
-                    { name: "Bill Outcome", value: upvoteCount > downvoteCount ? "Bill Passed" : "Bill Failed", inline: false }
-                )
-                .setColor(upvoteCount > downvoteCount ? 0x00ff00 : 0xff0000)
-                .setTimestamp(new Date());
+    //         // Create the result embed
+    //         const resultEmbed = new EmbedBuilder()
+    //             .setTitle(`Voting Results for Bill: ${billName}`)
+    //             .addFields(
+    //                 { name: "Yes Votes", value: `${upvoteCount - 1}`, inline: true }, // Subtracting 1 for the initial reaction
+    //                 { name: "No Votes", value: `${downvoteCount - 1}`, inline: true },
+    //                 { name: "Bill Outcome", value: upvoteCount > downvoteCount ? "Bill Passed" : "Bill Failed", inline: false }
+    //             )
+    //             .setColor(upvoteCount > downvoteCount ? 0x00ff00 : 0xff0000)
+    //             .setTimestamp(new Date());
 
-            // Send the result embed to the results channel
-            const resultsChannel = await interaction.client.channels.fetch('1352555058210013194');
-            await resultsChannel.send({ embeds: [resultEmbed] });
-            message.delete()
-        }, 24 * 60 * 60 * 1000);
+    //         // Send the result embed to the results channel
+    //         const resultsChannel = await interaction.client.channels.fetch('1352555058210013194');
+    //         await resultsChannel.send({ embeds: [resultEmbed] });
+    //         message.delete()
+    //     }, 24 * 60 * 60 * 1000);
 
-        await interaction.reply(`Voting for the bill "${billName}" has been initiated.`);
-      } catch (error) {
-        console.error("Error checking location:", error);
-        await interaction.reply("There was an error.");
-      }
-    }
+    //     await interaction.reply(`Voting for the bill "${billName}" has been initiated.`);
+    //   } catch (error) {
+    //     console.error("Error checking location:", error);
+    //     await interaction.reply("There was an error.");
+    //   }
+    // }
 
     if (commandName === "check-mp-location") {
       const targetUser = options.getUser("mp");
@@ -295,7 +255,8 @@ client.on('interactionCreate', async interaction => {
         if (targetUser) {
           // Fetch individual MP's location
           const location = await getUserLocation(targetUser.id);
-          const displayLocation = location || "Unknown";
+          const displayLocation = PossibleLocations.find(loc => loc.name === location)?.name || "Unknown";
+
     
           // Find location data for the embed image (if applicable)
           const locationData = PossibleLocations.find(loc => loc.name === displayLocation);
@@ -315,17 +276,14 @@ client.on('interactionCreate', async interaction => {
           await interaction.reply({ embeds: [userEmbed] });
           logCommandUsage(commandName, member, `Checked location for ${targetUser.username}`);
         } else {
-          // Get all MPs and their locations as an array of { userId, username, location }
           const mpLocationsArray = await getAllUserLocations();
-    
-          // Map user IDs to their display names
+
           const locationMap = {};
           for (const mp of mpLocationsArray) {
             const loc = mp.location || "Unknown";
-            
-            // Fetch member from the Discord server
+
             const member = await interaction.guild.members.fetch(mp.userId).catch(() => null);
-            const displayName = member ? member.displayName : mp.username;
+            const displayName = member?.displayName || mp.username || "Unknown MP";
 
             if (!locationMap[loc]) {
               locationMap[loc] = [];
@@ -333,25 +291,25 @@ client.on('interactionCreate', async interaction => {
             locationMap[loc].push(displayName);
           }
 
-          // Create embed fields from the grouped data
+          // Create embed fields with each MP on a new line
           const locationFields = Object.entries(locationMap).map(([location, users]) => ({
             name: `📍 ${location}`,
-            value: users.join(", "),
+            value: users.map(name => `- ${name}`).join("\n"),
             inline: false,
           }));
-    
+
           if (locationFields.length === 0) {
             await interaction.reply("No MPs currently have a recorded location.");
             return;
           }
-    
+
           const locationEmbed = new EmbedBuilder()
             .setTitle("MPs by Location")
             .setDescription("Here is a list of all MPs and where they are currently located.")
             .addFields(locationFields)
             .setColor(0x00ff00)
             .setTimestamp(new Date());
-    
+
           await interaction.reply({ embeds: [locationEmbed] });
           logCommandUsage(commandName, member, "Checked all MP locations");
         }
@@ -492,83 +450,83 @@ client.on('interactionCreate', async interaction => {
       }
     }
   
-    if (commandName === 'add-bill-for-oversight-council') {
-      if (!member.roles.cache.some(role => role.id === LEADER_OF_THE_HOUSE)) {
-        return interaction.reply("You don't have permission to use this command.");
-      }
+    // if (commandName === 'add-bill-for-oversight-council') {
+    //   if (!member.roles.cache.some(role => role.id === LEADER_OF_THE_HOUSE)) {
+    //     return interaction.reply("You don't have permission to use this command.");
+    //   }
       
-      const billLink = options.getString('bill_link');
-      const bill_name = options.getString('bill_name');
+    //   const billLink = options.getString('bill_link');
+    //   const bill_name = options.getString('bill_name');
     
-      try {
-        // Get current date
-        const dateObj = new Date();
-        const currentDate = ("0" + dateObj.getDate()).slice(-2) + "-" +
-                            ("0" + (dateObj.getMonth() + 1)).slice(-2) + "-" +
-                            dateObj.getFullYear();
+    //   try {
+    //     // Get current date
+    //     const dateObj = new Date();
+    //     const currentDate = ("0" + dateObj.getDate()).slice(-2) + "-" +
+    //                         ("0" + (dateObj.getMonth() + 1)).slice(-2) + "-" +
+    //                         dateObj.getFullYear();
       
-        // 1. Fetch the existing bills and find the row to delete
-        const request = {
-          spreadsheetId: '1eqvvVo5-uS1SU8dGaRy3tvGEB7zHjZp53whQUU5CVRI',
-          range: 'Queue!A:A', // Get only the first column (Bill names)
-        };
+    //     // 1. Fetch the existing bills and find the row to delete
+    //     const request = {
+    //       spreadsheetId: '1eqvvVo5-uS1SU8dGaRy3tvGEB7zHjZp53whQUU5CVRI',
+    //       range: 'Queue!A:A', // Get only the first column (Bill names)
+    //     };
       
-        const response = await sheets.spreadsheets.values.get(request);
-        const rows = response.data.values; // Rows in column A
-        let rowIndexToDelete = -1;
+    //     const response = await sheets.spreadsheets.values.get(request);
+    //     const rows = response.data.values; // Rows in column A
+    //     let rowIndexToDelete = -1;
       
-        // Find the row with the matching bill name
-        if (rows) {
-          rowIndexToDelete = rows.findIndex(row => row[0] === bill_name);
-        }
+    //     // Find the row with the matching bill name
+    //     if (rows) {
+    //       rowIndexToDelete = rows.findIndex(row => row[0] === bill_name);
+    //     }
       
-        if (rowIndexToDelete !== -1) {
-          // Row found, delete it
-          const deleteRequest = {
-            spreadsheetId: '1eqvvVo5-uS1SU8dGaRy3tvGEB7zHjZp53whQUU5CVRI',
-            range: `Queue!A${rowIndexToDelete + 1}:D${rowIndexToDelete + 1}`,
-          };
-          await sheets.spreadsheets.values.clear(deleteRequest); // This will clear the values of the row
-          console.log(`Row ${rowIndexToDelete + 1} deleted from Bills sheet.`);
-        }
+    //     if (rowIndexToDelete !== -1) {
+    //       // Row found, delete it
+    //       const deleteRequest = {
+    //         spreadsheetId: '1eqvvVo5-uS1SU8dGaRy3tvGEB7zHjZp53whQUU5CVRI',
+    //         range: `Queue!A${rowIndexToDelete + 1}:D${rowIndexToDelete + 1}`,
+    //       };
+    //       await sheets.spreadsheets.values.clear(deleteRequest); // This will clear the values of the row
+    //       console.log(`Row ${rowIndexToDelete + 1} deleted from Bills sheet.`);
+    //     }
     
-        // 2. Append the new bill information
-        const appendRequest = {
-          spreadsheetId: '1xMv0ndSax-IukyL0N5qKbVkUCF2ArhCaehvP2Jh7ewY',
-          range: 'Bills!A:C',
-          valueInputOption: 'USER_ENTERED',
-          insertDataOption: 'INSERT_ROWS',
-          requestBody: {
-            values: [
-              [bill_name, billLink, currentDate]
-            ]
-          }
-        };
+    //     // 2. Append the new bill information
+    //     const appendRequest = {
+    //       spreadsheetId: '1xMv0ndSax-IukyL0N5qKbVkUCF2ArhCaehvP2Jh7ewY',
+    //       range: 'Bills!A:C',
+    //       valueInputOption: 'USER_ENTERED',
+    //       insertDataOption: 'INSERT_ROWS',
+    //       requestBody: {
+    //         values: [
+    //           [bill_name, billLink, currentDate]
+    //         ]
+    //       }
+    //     };
         
-        await sheets.spreadsheets.values.append(appendRequest);
+    //     await sheets.spreadsheets.values.append(appendRequest);
     
-        // Reply to the interaction
-        await interaction.reply(`Bill added for Oversight Committee: ${billLink}`);
-        logCommandUsage(commandName, member, `Added bill for Oversight Committee: ${billLink}`);
+    //     // Reply to the interaction
+    //     await interaction.reply(`Bill added for Oversight Committee: ${billLink}`);
+    //     logCommandUsage(commandName, member, `Added bill for Oversight Committee: ${billLink}`);
     
-        // 3. Create and send the embed in the specified channel (1289816803341504625)
-        const embed = new EmbedBuilder()
-          .setTitle("Bill Passed by Parliament")
-          .addFields(
-            { name: "Bill Name", value: bill_name, inline: false },
-            { name: "Bill Link", value: billLink, inline: false }
-          )
-          .setColor(0x00FF00)  // Green for passed bills
-          .setTimestamp(new Date());
+    //     // 3. Create and send the embed in the specified channel (1289816803341504625)
+    //     const embed = new EmbedBuilder()
+    //       .setTitle("Bill Passed by Parliament")
+    //       .addFields(
+    //         { name: "Bill Name", value: bill_name, inline: false },
+    //         { name: "Bill Link", value: billLink, inline: false }
+    //       )
+    //       .setColor(0x00FF00)  // Green for passed bills
+    //       .setTimestamp(new Date());
     
-        const channel = await interaction.client.channels.fetch('1289816803341504625');
-        await channel.send({ embeds: [embed] });
+    //     const channel = await interaction.client.channels.fetch('1289816803341504625');
+    //     await channel.send({ embeds: [embed] });
     
-      } catch (error) {
-        console.error('Command add_bill_for_oversight_committee Failed:', error);
-        await interaction.reply("There was an error adding the bill.");
-      }
-    }
+    //   } catch (error) {
+    //     console.error('Command add_bill_for_oversight_committee Failed:', error);
+    //     await interaction.reply("There was an error adding the bill.");
+    //   }
+    // }
 
     if (commandName === 'add-event-to-end-of-month') {
         if (!member.roles.cache.some(role => role.id === SERVER_DIRECTOR)) {
@@ -818,9 +776,9 @@ try {
 
 // Startup functions
 async function startup() {
-  //await downloadSheets('1eqvvVo5-uS1SU8dGaRy3tvGEB7zHjZp53whQUU5CVRI');
+  await downloadSheets('1eqvvVo5-uS1SU8dGaRy3tvGEB7zHjZp53whQUU5CVRI');
+  await startupUserLocations(await fetchAllMPs());
   console.log(await getAllUserLocations());
-  await SetupBillQueue();
   await watchApplicationSheet(client);
 }
 

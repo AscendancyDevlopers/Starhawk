@@ -1,33 +1,52 @@
 const { ApplicationCommandOptionType } = require('discord.js');
 const { SecureLocations, PossibleLocations } = require('./Locations');
-const { BillsInQueue } = require('./bot');
+// const { BillsInQueue } = require('./bot');
 const { CABINETROLES } = require('./roles');
  
 
-if (!BillsInQueue || !Array.isArray(BillsInQueue)) {
-  console.error('BillsInQueue is not defined or not an array');
-  let BillsInQueue = [bill = ""];
-}
+// if (!BillsInQueue || !Array.isArray(BillsInQueue)) {
+//   console.error('BillsInQueue is not defined or not an array');
+//   let BillsInQueue = [bill = ""];
+// }
+
+/*
+Command List
+/help
+/vote
+/law
+/resolution
+/motion
+/travel
+/action
+/info
+/update-cabinet
+/bot-stats
+/interest-rate
+/open-close-parliament
+/end-session
+/start-session
+/discipline-member
+*/
 
 const commands = [
-  {
-    name: 'add-bill-for-oversight-council',
-    description: 'Add a bill to the Oversight Councils Queue',
-    options: [
-      {
-        name: 'bill_name',
-        type: ApplicationCommandOptionType.String,
-        description: 'Name of the Bill',
-        required: true
-      },
-      {
-        name: 'bill_link',
-        type: ApplicationCommandOptionType.String,
-        description: 'Link to the Bill document',
-        required: true
-      }
-    ]
-  },
+  // {
+  //   name: 'add-bill-for-oversight-council',
+  //   description: 'Add a bill to the Oversight Councils Queue',
+  //   options: [
+  //     {
+  //       name: 'bill_name',
+  //       type: ApplicationCommandOptionType.String,
+  //       description: 'Name of the Bill',
+  //       required: true
+  //     },
+  //     {
+  //       name: 'bill_link',
+  //       type: ApplicationCommandOptionType.String,
+  //       description: 'Link to the Bill document',
+  //       required: true
+  //     }
+  //   ]
+  // },
   {
     name: 'add-event-to-end-of-month',
     description: 'Add a Event to the End of Month Queue',
@@ -157,23 +176,23 @@ const commands = [
         }))
       }
     ]
-  },
-  {
-    name: 'create-vote',
-    description: 'Create a Vote',
-    options: [
-      {
-        name: 'bill',
-        type: ApplicationCommandOptionType.String,
-        description: 'Select the bill you want to start a vote on',
-        required: true,
-        choices: PossibleLocations.map(location => ({ 
-          name: location.name, 
-          value: location.name 
-        }))
-      }
-    ]
   }
+  // {
+  //   name: 'create-vote',
+  //   description: 'Create a Vote',
+  //   options: [
+  //     {
+  //       name: 'bill',
+  //       type: ApplicationCommandOptionType.String,
+  //       description: 'Select the bill you want to start a vote on',
+  //       required: true,
+  //       choices: PossibleLocations.map(location => ({ 
+  //         name: location.name, 
+  //         value: location.name 
+  //       }))
+  //     }
+  //   ]
+  // }
 ];
 
 module.exports = { commands };
