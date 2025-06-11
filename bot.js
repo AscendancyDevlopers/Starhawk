@@ -16,7 +16,7 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
-const VERSION_ID = '1.1.0';
+const VERSION_ID = '1.1.4';
 
 // Google Sheets Setup
 const { google } = require("googleapis");
