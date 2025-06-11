@@ -163,7 +163,8 @@ client.on('interactionCreate', async interaction => {
           userEmbed.setImage(locationData.url);
           userEmbed.setURL(MapURL)
         }
-  
+        
+        await interaction.reply({ embeds: [userEmbed] });
         logCommandUsage(commandName, member, `Checked location for ${targetUser.username}`);
       } else {
         const mpLocationsArray = await getAllUserLocations();
