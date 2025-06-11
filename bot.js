@@ -56,7 +56,6 @@ const {scheduleTimer} = require('./timers');
 const {downloadSheets, readCsv, readCell} = require('./googleSheetsHandler');
 const {RunEndofMonth} = require('./EndOfMonth');
 const { watchApplicationSheet } = require('./WatchApplicationsFile');
-const { runMonthlyProductionUpdate } = require('./Production');
 
 (async () => {
     try {
