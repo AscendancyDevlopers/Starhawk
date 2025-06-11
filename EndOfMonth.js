@@ -9,7 +9,7 @@ year = parseInt(year) - 1045;
 
 // Get current month name
 let month = new Date().toLocaleString('default', { month: 'long' });
-console.log(`Processing budget for ${month} ${year}`);
+
 
 
 // Local Council 15% of Local GDP
@@ -915,8 +915,10 @@ class EndOfMonthProcessor {
       new Planet("Novem Domitros", regionNames)
     ];
   }
+  
 
   async run() {
+    console.log(`Processing budget for ${month} ${year}\n\n`);
     console.log("\n=== Starting Global End-of-Month Process ===");
     Utils.logToFile("\n=== Starting Global End-of-Month Process ===");
     console.log("Downloading sheets...");
