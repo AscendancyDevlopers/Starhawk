@@ -59,10 +59,6 @@ async function checkForNewApplications(client) {
     let rows = await readCsv(APPLICATIONS_CSV_PATH);
     rows = await readCsv(APPLICATIONS_CSV_PATH);
 
-    rows.forEach((row) => {
-      console.log(row);
-    });
-
     const guild = await client.guilds.fetch(GUILD_ID);
     const channel = await client.channels.fetch(APPLICATIONS_CHANNEL_ID);
     const now = new Date();

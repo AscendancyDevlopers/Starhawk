@@ -16,7 +16,7 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
-const VERSION_ID = '1.0.0';
+const VERSION_ID = '1.1.0';
 
 // Google Sheets Setup
 const { google } = require("googleapis");
@@ -273,7 +273,6 @@ client.on('interactionCreate', async interaction => {
             userEmbed.setURL(MapURL)
           }
     
-          await interaction.reply({ embeds: [userEmbed] });
           logCommandUsage(commandName, member, `Checked location for ${targetUser.username}`);
         } else {
           const mpLocationsArray = await getAllUserLocations();
@@ -297,11 +296,6 @@ client.on('interactionCreate', async interaction => {
             value: users.map(name => `- ${name}`).join("\n"),
             inline: false,
           }));
-
-          if (locationFields.length === 0) {
-            await interaction.reply("No MPs currently have a recorded location.");
-            return;
-          }
 
           const locationEmbed = new EmbedBuilder()
             .setTitle("MPs by Location")
@@ -778,7 +772,6 @@ try {
 async function startup() {
   await downloadSheets('1eqvvVo5-uS1SU8dGaRy3tvGEB7zHjZp53whQUU5CVRI');
   await startupUserLocations(await fetchAllMPs());
-  console.log(await getAllUserLocations());
   await watchApplicationSheet(client);
 }
 
